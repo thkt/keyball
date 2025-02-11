@@ -207,32 +207,17 @@ __attribute__((weak)) void keyball_on_apply_motion_to_mouse_scroll(keyball_motio
 #endif
 
     // Scroll snapping
-#if KEYBALL_SCROLLSNAP_ENABLE == 1
-    // Old behavior up to 1.3.2)
-    uint32_t now = timer_read32();
-    if (r->h != 0 || r->v != 0) {
-        keyball.scroll_snap_last = now;
-    } else if (TIMER_DIFF_32(now, keyball.scroll_snap_last) >= KEYBALL_SCROLLSNAP_RESET_TIMER) {
-        keyball.scroll_snap_tension_h = 0;
-    }
-    if (abs(keyball.scroll_snap_tension_h) < KEYBALL_SCROLLSNAP_TENSION_THRESHOLD) {
-        keyball.scroll_snap_tension_h += y;
+switch (keyball_get_scrollsnap_mode()) {
+    case KEYBALL_SCROLLSNAP_MODE_HORIZONTAL:
+        r->h = clip2int8(y);
+        r->v = 0;
+        break;
+    case KEYBALL_SCROLLSNAP_MODE_FREE:
+        r->h = clip2int8(y);
+        break;
+    default:  // VERTICAL mode and undefined modes
         r->h = 0;
-    }
-#elif KEYBALL_SCROLLSNAP_ENABLE == 2
-    // New behavior
-    switch (keyball_get_scrollsnap_mode()) {
-        case KEYBALL_SCROLLSNAP_MODE_VERTICAL:
-            r->h = 0;
-            break;
-        case KEYBALL_SCROLLSNAP_MODE_HORIZONTAL:
-            r->v = 0;
-            break;
-        default:
-            // pass by without doing anything
-            break;
-    }
-#endif
+        break;
 }
 
 static void motion_to_mouse(keyball_motion_t *m, report_mouse_t *r, bool is_left, bool as_scroll) {
