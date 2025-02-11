@@ -207,53 +207,25 @@ __attribute__((weak)) void keyball_on_apply_motion_to_mouse_scroll(keyball_motio
 #endif
 
     // Scroll snapping
-// キーボールの設定に関する関数は外部参照できるように static を削除
-void keyball_set_scrollsnap_mode(keyball_scrollsnap_mode_t mode) {
-    if (mode <= KEYBALL_SCROLLSNAP_MODE_FREE) {
-        keyball.scrollsnap_mode = mode;
+#if KEYBALL_SCROLLSNAP_ENABLE == 1
+    // Old behavior up to 1.3.2)
+    uint32_t now = timer_read32();
+    if (r->h != 0 || r->v != 0) {
+        keyball.scroll_snap_last = now;
+    } else if (TIMER_DIFF_32(now, keyball.scroll_snap_last) >= KEYBALL_SCROLLSNAP_RESET_TIMER) {
+        keyball.scroll_snap_tension_h = 0;
     }
-}
-
-void keyball_on_apply_motion_to_mouse_scroll(keyball_motion_t *m, report_mouse_t *r, bool is_left) {
-    // トラックボールの動きを分割する
-    int16_t div = 1 << (keyball_get_scroll_div() - 1);
-    int16_t x = divmod16(&m->x, div);
-    int16_t y = divmod16(&m->y, div);
-
-    // マウスレポートに適用
-#if KEYBALL_MODEL == 61 || KEYBALL_MODEL == 39 || KEYBALL_MODEL == 147 || KEYBALL_MODEL == 44
-    r->v = -clip2int8(x);  // 垂直スクロール
-    if (is_left) {
-        r->v = -r->v;     // 左手側の場合は方向を反転
-    }
-
-    // スクロールモードに応じて水平スクロールを制御
+#elif KEYBALL_SCROLLSNAP_ENABLE == 2
+    // New behavior
     switch (keyball_get_scrollsnap_mode()) {
-        case KEYBALL_SCROLLSNAP_MODE_HORIZONTAL:
-            r->h = clip2int8(y);
-            r->v = 0;
-            break;
-        case KEYBALL_SCROLLSNAP_MODE_FREE:
-            r->h = clip2int8(y);
-            if (is_left) {
-                r->h = -r->h;
-            }
-            break;
-        default:  // VERTICAL mode（デフォルト）
+        case KEYBALL_SCROLLSNAP_MODE_VERTICAL:
             r->h = 0;
             break;
-    }
-#elif KEYBALL_MODEL == 46
-    r->v = clip2int8(y);
-    r->h = 0;  // デフォルトで水平スクロールを無効化
-
-    switch (keyball_get_scrollsnap_mode()) {
         case KEYBALL_SCROLLSNAP_MODE_HORIZONTAL:
-            r->h = clip2int8(x);
             r->v = 0;
             break;
-        case KEYBALL_SCROLLSNAP_MODE_FREE:
-            r->h = clip2int8(x);
+        default:
+            // pass by without doing anything
             break;
     }
 #endif
